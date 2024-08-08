@@ -16,6 +16,7 @@
     "axios": "^1.7.3",
     "firebase": "^10.12.5",
     "next": "14.2.5",
+    "pantry-ai-tracker": "file:",
     "react": "^18",
     "react-camera-pro": "^1.4.0",
     "react-dom": "^18",
