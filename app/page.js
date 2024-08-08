@@ -4,13 +4,11 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { AppBar, Toolbar, Typography, Button, Box, Grid, Card, CardContent, TextField, IconButton } from '@mui/material';
-import { auth, provider, signInWithPopup, signOut } from "@/firebase";
+import { auth, provider, signInWithPopup, signOut, firestore } from "../app/firebase"
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, query, where } from "firebase/firestore";
-import { firestore } from "@/firebase";
 
-// Create a theme with bluish accents
 const theme = createTheme({
   typography: {
     fontFamily: 'Poppins, Arial, sans-serif',
@@ -29,32 +27,32 @@ const theme = createTheme({
   },
   palette: {
     primary: {
-      main: '#1976d2', // Blue shade
+      main: '#1976d2',
     },
     secondary: {
-      main: '#2196f3', // Light blue shade
+      main: '#2196f3',
     },
     background: {
-      default: '#e3f2fd', // Light blue background
-      paper: '#ffffff', // White background for cards
+      default: '#e3f2fd',
+      paper: '#ffffff',
     },
     text: {
-      primary: '#212121', // Dark text
-      secondary: '#757575', // Lighter text
+      primary: '#212121',
+      secondary: '#757575',
     },
   },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 8, // Rounded corners for buttons
+          borderRadius: 8,
         },
       },
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 12, // Rounded corners for cards
+          borderRadius: 12,
         },
       },
     },
@@ -73,42 +71,50 @@ export default function Home() {
   const [recipe, setRecipe] = useState("");
 
   useEffect(() => {
-    const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap';
-    link.rel = 'stylesheet';
-    document.head.appendChild(link);
-    return () => {
-      document.head.removeChild(link);
-    };
+    if (typeof window !== 'undefined') {
+      const link = document.createElement('link');
+      link.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap';
+      link.rel = 'stylesheet';
+      document.head.appendChild(link);
+      return () => {
+        document.head.removeChild(link);
+      };
+    }
   }, []);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        setUser(user);
-        updateInventory();
-      } else {
-        setUser(null);
-        setInventory([]);
-      }
-    });
+    if (typeof window !== 'undefined') {
+      const unsubscribe = auth.onAuthStateChanged((user) => {
+        if (user) {
+          setUser(user);
+          updateInventory();
+        } else {
+          setUser(null);
+          setInventory([]);
+        }
+      });
 
-    return () => unsubscribe();
+      return () => unsubscribe();
+    }
   }, []);
 
   const handleSignIn = async () => {
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Error signing in with Google: ", error);
+    if (typeof window !== 'undefined') {
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (error) {
+        console.error("Error signing in with Google: ", error);
+      }
     }
   };
 
   const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Error signing out: ", error);
+    if (typeof window !== 'undefined') {
+      try {
+        await signOut(auth);
+      } catch (error) {
+        console.error("Error signing out: ", error);
+      }
     }
   };
 
@@ -185,23 +191,18 @@ export default function Home() {
 
   const generateRecipe = async () => {
     const itemNames = inventory.map(item => item.name).join(", ");
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch("/api/generate-recipe", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer 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`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        "model": "meta-llama/llama-3.1-8b-instruct:free",
-        "messages": [
-          { "role": "user", "content": `Generate a recipe using the following ingredients: ${itemNames}` },
-        ],
+        ingredients: itemNames
       })
     });
 
     const data = await response.json();
-    const recipeContent = data.choices[0]?.message?.content || "";
-    setRecipe(recipeContent);
+    setRecipe(data.recipe);
   };
 
   return (
@@ -235,7 +236,7 @@ export default function Home() {
           <Grid item xs={12} sm={10} md={8} lg={6}>
             <Card sx={{ borderRadius: 2, p: 3 }}>
               <Typography variant="h4" align="center" gutterBottom>
-                Manage your pantry items with ease.
+                Your Pantry, Your Way
               </Typography>
               {user ? (
                 <Grid container spacing={2}>
@@ -281,15 +282,15 @@ export default function Home() {
                     </Button>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <Typography variant="h6">Search & Manage Pantry Items</Typography>
+                    <Typography variant="h6">Search</Typography>
                     <TextField
-                      label="Search..."
+                      label="Search Items"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                       variant="outlined"
                       margin="normal"
                       fullWidth
                       sx={{ mb: 2 }}
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     <Button
                       onClick={searchItems}
@@ -300,47 +301,56 @@ export default function Home() {
                     >
                       Search
                     </Button>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="h6">Pantry Items</Typography>
+                    <Grid container spacing={2}>
+                      {inventory.map(item => (
+                        <Grid item xs={12} key={item.id}>
+                          <Card
+                            sx={{
+                              borderRadius: 2,
+                              backgroundColor: hoveredItemId === item.id ? "#e3f2fd" : "#ffffff",
+                            }}
+                            onMouseEnter={() => setHoveredItemId(item.id)}
+                            onMouseLeave={() => setHoveredItemId(null)}
+                          >
+                            <CardContent>
+                              <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                {item.name} - {item.count}
+                              </Typography>
+                              <Typography variant="body2">
+                                Expiration Date: {item.date}
+                              </Typography>
+                              <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                                <IconButton onClick={() => startEdit(item)} color="primary">
+                                  <EditIcon />
+                                </IconButton>
+                                <IconButton onClick={() => deleteItem(item.id)} color="secondary">
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Box>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Grid>
+                  <Grid item xs={12}>
                     <Button
                       onClick={generateRecipe}
                       variant="contained"
                       color="secondary"
                       fullWidth
-                      sx={{ mb: 2 }}
                     >
                       Generate Recipe
                     </Button>
-                  </Grid>
-                  <Grid item xs={12}>
-                    {inventory.map((item) => (
-                      <Card
-                        key={item.id}
-                        sx={{
-                          mb: 2,
-                          boxShadow: hoveredItemId === item.id ? "0 0 20px rgba(0, 0, 0, 0.2)" : "",
-                          transition: "box-shadow 0.3s ease",
-                        }}
-                        onMouseEnter={() => setHoveredItemId(item.id)}
-                        onMouseLeave={() => setHoveredItemId(null)}
-                      >
-                        <CardContent>
-                          <Grid container alignItems="center" justifyContent="space-between">
-                            <Grid item>
-                              <Typography variant="h6">{item.name}</Typography>
-                              <Typography variant="body2">Quantity: {item.count}</Typography>
-                              <Typography variant="body2">Expiration Date: {item.date}</Typography>
-                            </Grid>
-                            <Grid item>
-                              <IconButton onClick={() => startEdit(item)}>
-                                <EditIcon />
-                              </IconButton>
-                              <IconButton onClick={() => deleteItem(item.id)}>
-                                <DeleteIcon />
-                              </IconButton>
-                            </Grid>
-                          </Grid>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    {recipe && (
+                      <Box mt={2}>
+                        <Typography variant="h6">Recipe Suggestion:</Typography>
+                        <Typography variant="body1">{recipe}</Typography>
+                      </Box>
+                    )}
                   </Grid>
                 </Grid>
               ) : (
@@ -351,19 +361,9 @@ export default function Home() {
             </Card>
           </Grid>
         </Grid>
-        {recipe && (
-          <Grid container justifyContent="center" sx={{ mt: 4 }}>
-            <Grid item xs={12} sm={10} md={8} lg={6}>
-              <Card sx={{ borderRadius: 2, p: 3 }}>
-                <Typography variant="h5" gutterBottom>
-                  Generated Recipe
-                </Typography>
-                <Typography variant="body1">{recipe}</Typography>
-              </Card>
-            </Grid>
-          </Grid>
-        )}
       </Box>
     </ThemeProvider>
   );
 }
+
+export const dynamic = "force-dynamic";
