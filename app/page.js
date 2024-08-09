@@ -8,6 +8,7 @@ import { auth, provider, signInWithPopup, signOut, firestore } from "../app/fire
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, query, where } from "firebase/firestore";
+import { Analytics } from "@vercel/analytics/react"
 
 const theme = createTheme({
   typography: {
@@ -134,6 +135,14 @@ export default function Home() {
   const addItem = async () => {
     if (itemName.trim() === "" || itemCount.trim() === "") return;
 
+    const currentDate = new Date();
+    const expirationDate = new Date(itemDate);
+
+    if (expirationDate < currentDate) {
+      alert("Cannot add expired items.");
+      return;
+    }
+
     if (editingItemId) {
       const itemDocRef = doc(firestore, "inventory", editingItemId);
       await updateDoc(itemDocRef, {
@@ -208,12 +217,12 @@ export default function Home() {
   return (
     <ThemeProvider theme={theme}>
       <Head>
-        <title>PantryGo </title>
+        <title>PantryPal</title>
       </Head>
       <AppBar position="static">
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            PantryGo
+            PantryPal
           </Typography>
           {user ? (
             <>
