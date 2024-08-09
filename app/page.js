@@ -4,12 +4,14 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { AppBar, Toolbar, Typography, Button, Box, Grid, Card, CardContent, TextField, IconButton } from '@mui/material';
-import { auth, provider, signInWithPopup, signOut, firestore } from "../app/firebase"
+import { auth, provider, signInWithPopup, signOut } from "@/firebase";
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, query, where } from "firebase/firestore";
-import { Analytics } from "@vercel/analytics/react"
+import { firestore } from "@/firebase";
+import ReactMarkdown from 'react-markdown';
 
+// Create a theme with bluish accents
 const theme = createTheme({
   typography: {
     fontFamily: 'Poppins, Arial, sans-serif',
@@ -28,32 +30,32 @@ const theme = createTheme({
   },
   palette: {
     primary: {
-      main: '#1976d2',
+      main: '#1976d2', // Blue shade
     },
     secondary: {
-      main: '#2196f3',
+      main: '#2196f3', // Light blue shade
     },
     background: {
-      default: '#e3f2fd',
-      paper: '#ffffff',
+      default: '#e3f2fd', // Light blue background
+      paper: '#ffffff', // White background for cards
     },
     text: {
-      primary: '#212121',
-      secondary: '#757575',
+      primary: '#212121', // Dark text
+      secondary: '#757575', // Lighter text
     },
   },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
+          borderRadius: 8, // Rounded corners for buttons
         },
       },
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
+          borderRadius: 12, // Rounded corners for cards
         },
       },
     },
@@ -70,52 +72,45 @@ export default function Home() {
   const [hoveredItemId, setHoveredItemId] = useState(null);
   const [editingItemId, setEditingItemId] = useState(null);
   const [recipe, setRecipe] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const link = document.createElement('link');
-      link.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap';
-      link.rel = 'stylesheet';
-      document.head.appendChild(link);
-      return () => {
-        document.head.removeChild(link);
-      };
-    }
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+    return () => {
+      document.head.removeChild(link);
+    };
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const unsubscribe = auth.onAuthStateChanged((user) => {
-        if (user) {
-          setUser(user);
-          updateInventory();
-        } else {
-          setUser(null);
-          setInventory([]);
-        }
-      });
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        setUser(user);
+        updateInventory();
+      } else {
+        setUser(null);
+        setInventory([]);
+      }
+    });
 
-      return () => unsubscribe();
-    }
+    return () => unsubscribe();
   }, []);
 
   const handleSignIn = async () => {
-    if (typeof window !== 'undefined') {
-      try {
-        await signInWithPopup(auth, provider);
-      } catch (error) {
-        console.error("Error signing in with Google: ", error);
-      }
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Error signing in with Google: ", error);
     }
   };
 
   const handleSignOut = async () => {
-    if (typeof window !== 'undefined') {
-      try {
-        await signOut(auth);
-      } catch (error) {
-        console.error("Error signing out: ", error);
-      }
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out: ", error);
     }
   };
 
@@ -135,13 +130,15 @@ export default function Home() {
   const addItem = async () => {
     if (itemName.trim() === "" || itemCount.trim() === "") return;
 
-    const currentDate = new Date();
+    // Check if the expiration date is valid
+    const today = new Date();
     const expirationDate = new Date(itemDate);
-
-    if (expirationDate < currentDate) {
-      alert("Cannot add expired items.");
+    if (expirationDate < today) {
+      setErrorMessage("The expiration date cannot be in the past.");
       return;
     }
+
+    setErrorMessage(""); // Clear previous error messages
 
     if (editingItemId) {
       const itemDocRef = doc(firestore, "inventory", editingItemId);
@@ -199,42 +196,35 @@ export default function Home() {
   };
 
   const generateRecipe = async () => {
-    try {
-      const itemNames = inventory.map(item => item.name).join(", ");
-      const response = await fetch("/api/generate-recipe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          ingredients: itemNames
-        })
-      });
+    const itemNames = inventory.map(item => item.name).join(", ");
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer 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`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        "model": "meta-llama/llama-3.1-8b-instruct:free",
+        "messages": [
+          { "role": "user", "content": `Generate a recipe using the following ingredients: ${itemNames}` },
+        ],
+      })
+    });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      if (data && data.recipe) {
-        setRecipe(data.recipe);
-      } else {
-        console.error("Recipe not found in the API response.");
-      }
-    } catch (error) {
-      console.error("Error generating recipe:", error);
-    }
+    const data = await response.json();
+    const recipeContent = data.choices[0]?.message?.content || "";
+    setRecipe(recipeContent);
   };
 
   return (
     <ThemeProvider theme={theme}>
       <Head>
-        <title>PantryGo</title>
+        <title>PantryPal</title>
       </Head>
       <AppBar position="static">
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            PantryGo
+            PantryPal
           </Typography>
           {user ? (
             <>
@@ -257,7 +247,7 @@ export default function Home() {
           <Grid item xs={12} sm={10} md={8} lg={6}>
             <Card sx={{ borderRadius: 2, p: 3 }}>
               <Typography variant="h4" align="center" gutterBottom>
-                Your Pantry, Your Way
+                Manage your pantry items with ease.
               </Typography>
               {user ? (
                 <Grid container spacing={2}>
@@ -292,6 +282,11 @@ export default function Home() {
                       InputLabelProps={{ shrink: true }}
                       sx={{ mb: 2 }}
                     />
+                    {errorMessage && (
+                      <Typography variant="body2" color="error" align="center" sx={{ mb: 2 }}>
+                        {errorMessage}
+                      </Typography>
+                    )}
                     <Button
                       onClick={addItem}
                       variant="contained"
@@ -303,15 +298,15 @@ export default function Home() {
                     </Button>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <Typography variant="h6">Search</Typography>
+                    <Typography variant="h6">Search & Manage Pantry Items</Typography>
                     <TextField
-                      label="Search Items"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      label="Search..."
                       variant="outlined"
                       margin="normal"
                       fullWidth
                       sx={{ mb: 2 }}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     <Button
                       onClick={searchItems}
@@ -322,56 +317,47 @@ export default function Home() {
                     >
                       Search
                     </Button>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography variant="h6">Pantry Items</Typography>
-                    <Grid container spacing={2}>
-                      {inventory.map(item => (
-                        <Grid item xs={12} key={item.id}>
-                          <Card
-                            sx={{
-                              borderRadius: 2,
-                              backgroundColor: hoveredItemId === item.id ? "#e3f2fd" : "#ffffff",
-                            }}
-                            onMouseEnter={() => setHoveredItemId(item.id)}
-                            onMouseLeave={() => setHoveredItemId(null)}
-                          >
-                            <CardContent>
-                              <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                                {item.name} - {item.count}
-                              </Typography>
-                              <Typography variant="body2">
-                                Expiration Date: {item.date}
-                              </Typography>
-                              <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-                                <IconButton onClick={() => startEdit(item)} color="primary">
-                                  <EditIcon />
-                                </IconButton>
-                                <IconButton onClick={() => deleteItem(item.id)} color="secondary">
-                                  <DeleteIcon />
-                                </IconButton>
-                              </Box>
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  </Grid>
-                  <Grid item xs={12}>
                     <Button
                       onClick={generateRecipe}
                       variant="contained"
                       color="secondary"
                       fullWidth
+                      sx={{ mb: 2 }}
                     >
                       Generate Recipe
                     </Button>
-                    {recipe && (
-                      <Box mt={2}>
-                        <Typography variant="h6">Recipe Suggestion:</Typography>
-                        <Typography variant="body1">{recipe}</Typography>
-                      </Box>
-                    )}
+                  </Grid>
+                  <Grid item xs={12}>
+                    {inventory.map((item) => (
+                      <Card
+                        key={item.id}
+                        sx={{
+                          mb: 2,
+                          boxShadow: hoveredItemId === item.id ? "0 0 20px rgba(0, 0, 0, 0.2)" : "",
+                          transition: "box-shadow 0.3s ease",
+                        }}
+                        onMouseEnter={() => setHoveredItemId(item.id)}
+                        onMouseLeave={() => setHoveredItemId(null)}
+                      >
+                        <CardContent>
+                          <Grid container alignItems="center" justifyContent="space-between">
+                            <Grid item>
+                              <Typography variant="h6">{item.name}</Typography>
+                              <Typography variant="body2">Quantity: {item.count}</Typography>
+                              <Typography variant="body2">Expiration Date: {item.date}</Typography>
+                            </Grid>
+                            <Grid item>
+                              <IconButton onClick={() => startEdit(item)}>
+                                <EditIcon />
+                              </IconButton>
+                              <IconButton onClick={() => deleteItem(item.id)}>
+                                <DeleteIcon />
+                              </IconButton>
+                            </Grid>
+                          </Grid>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </Grid>
                 </Grid>
               ) : (
@@ -382,9 +368,19 @@ export default function Home() {
             </Card>
           </Grid>
         </Grid>
+        {recipe && (
+          <Grid container justifyContent="center" sx={{ mt: 4 }}>
+            <Grid item xs={12} sm={10} md={8} lg={6}>
+              <Card sx={{ borderRadius: 2, p: 3 }}>
+                <Typography variant="h5" gutterBottom>
+                  Generated Recipe
+                </Typography>
+                <ReactMarkdown>{recipe}</ReactMarkdown>
+              </Card>
+            </Grid>
+          </Grid>
+        )}
       </Box>
     </ThemeProvider>
   );
 }
-
-export const dynamic = "force-dynamic";
