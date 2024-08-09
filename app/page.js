@@ -135,6 +135,14 @@ export default function Home() {
   const addItem = async () => {
     if (itemName.trim() === "" || itemCount.trim() === "") return;
 
+    const currentDate = new Date();
+    const expirationDate = new Date(itemDate);
+
+    if (expirationDate < currentDate) {
+      alert("Cannot add expired items.");
+      return;
+    }
+
     if (editingItemId) {
       const itemDocRef = doc(firestore, "inventory", editingItemId);
       await updateDoc(itemDocRef, {
