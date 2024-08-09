@@ -8,7 +8,6 @@ import { auth, provider, signInWithPopup, signOut, firestore } from "../app/fire
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, query, where } from "firebase/firestore";
-import { Analytics } from "@vercel/analytics/react";
 
 const theme = createTheme({
   typography: {
