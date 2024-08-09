@@ -4,11 +4,11 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { AppBar, Toolbar, Typography, Button, Box, Grid, Card, CardContent, TextField, IconButton } from '@mui/material';
-import { auth, provider, signInWithPopup, signOut, firestore } from "../app/firebase"
+import { auth, provider, signInWithPopup, signOut, firestore } from "../app/firebase";
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, query, where } from "firebase/firestore";
-import { Analytics } from "@vercel/analytics/react"
+import { Analytics } from "@vercel/analytics/react";
 
 const theme = createTheme({
   typography: {
@@ -134,6 +134,14 @@ export default function Home() {
 
   const addItem = async () => {
     if (itemName.trim() === "" || itemCount.trim() === "") return;
+
+    const currentDate = new Date();
+    const expirationDate = new Date(itemDate);
+
+    if (expirationDate < currentDate) {
+      alert("Cannot add expired items.");
+      return;
+    }
 
     if (editingItemId) {
       const itemDocRef = doc(firestore, "inventory", editingItemId);
