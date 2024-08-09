@@ -200,7 +200,7 @@ export default function Home() {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer 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`,
+        "Authorization": `Bearer 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`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
