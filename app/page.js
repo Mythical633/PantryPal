@@ -199,19 +199,31 @@ export default function Home() {
   };
 
   const generateRecipe = async () => {
-    const itemNames = inventory.map(item => item.name).join(", ");
-    const response = await fetch("/api/generate-recipe", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        ingredients: itemNames
-      })
-    });
+    try {
+      const itemNames = inventory.map(item => item.name).join(", ");
+      const response = await fetch("/api/generate-recipe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ingredients: itemNames
+        })
+      });
 
-    const data = await response.json();
-    setRecipe(data.recipe);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data && data.recipe) {
+        setRecipe(data.recipe);
+      } else {
+        console.error("Recipe not found in the API response.");
+      }
+    } catch (error) {
+      console.error("Error generating recipe:", error);
+    }
   };
 
   return (
