@@ -10,7 +10,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        <title>Pantry Pal</title>
+        <title>PantryGo: Pantry Management on the Go!</title>
         <meta author="Sivaibala" />
       </head>
       <body className={inter.className}>{children}

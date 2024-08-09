@@ -208,12 +208,12 @@ export default function Home() {
   return (
     <ThemeProvider theme={theme}>
       <Head>
-        <title>PantryPal</title>
+        <title>PantryGo </title>
       </Head>
       <AppBar position="static">
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            PantryPal
+            PantryGo
           </Typography>
           {user ? (
             <>
