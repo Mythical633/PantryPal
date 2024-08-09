@@ -219,12 +219,12 @@ export default function Home() {
   return (
     <ThemeProvider theme={theme}>
       <Head>
-        <title>PantryPal</title>
+        <title>PantryGo</title>
       </Head>
       <AppBar position="static">
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            PantryPal
+            PantryGo
           </Typography>
           {user ? (
             <>
@@ -247,7 +247,7 @@ export default function Home() {
           <Grid item xs={12} sm={10} md={8} lg={6}>
             <Card sx={{ borderRadius: 2, p: 3 }}>
               <Typography variant="h4" align="center" gutterBottom>
-                Manage your pantry items with ease.
+                Your Pantry, Your Way!
               </Typography>
               {user ? (
                 <Grid container spacing={2}>
