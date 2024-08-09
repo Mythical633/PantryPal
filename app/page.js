@@ -197,25 +197,38 @@ export default function Home() {
 
   const generateRecipe = async () => {
     const itemNames = inventory.map(item => item.name).join(", ");
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer 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`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        "model": "meta-llama/llama-3.1-8b-instruct:free",
-        "messages": [
-          { "role": "user", "content": `Generate a recipe using the following ingredients: ${itemNames}` },
-        ],
-      })
-    });
-
-    const data = await response.json();
-    const recipeContent = data.choices[0]?.message?.content || "";
-    setRecipe(recipeContent);
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer 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`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          "model": "meta-llama/llama-3.1-8b-instruct:free",
+          "messages": [
+            { "role": "user", "content": `Generate a recipe using the following ingredients: ${itemNames}` },
+          ],
+        })
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      if (data.choices && Array.isArray(data.choices) && data.choices.length > 0) {
+        const recipeContent = data.choices[0]?.message?.content || "";
+        setRecipe(recipeContent);
+      } else {
+        setRecipe("No recipe generated.");
+      }
+    } catch (error) {
+      console.error("Error generating recipe:", error);
+      setRecipe("Failed to generate recipe. Please try again.");
+    }
   };
-
+  
   return (
     <ThemeProvider theme={theme}>
       <Head>
